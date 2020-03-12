@@ -24,6 +24,7 @@
 -export([
     ensure_self_signed/3,
     generate_self_signed/3,
+    check_keyfile/1,
     ciphers/0,
     decode_cert/1,
     normalize_hostname/1
@@ -170,7 +171,9 @@ ciphers() ->
 %% @doc Decode a certificate file, return common_name, not_after etc.
 -spec decode_cert(file:filename_all()) -> {ok, map()} | {error, not_a_certificate}.
 decode_cert(CertFile) ->
-    {ok, CertData} = file:read_file(CertFile),
+    decode_cert_data(file:read_file(CertFile)).
+
+decode_cert_data({ok, CertData}) ->
     PemEntries = public_key:pem_decode(CertData),
     case public_key:pem_entry_decode(hd(PemEntries)) of
         {'Certificate', #'TBSCertificate'{} = TBS, _, _} ->
@@ -184,7 +187,9 @@ decode_cert(CertFile) ->
             }};
         _ ->
             {error, not_a_certificate}
-    end.
+    end;
+decode_cert_data({error, _} = Error) ->
+    Error.
 
 decode_time({utcTime, [Y1,Y2,_M1,_M2,_D1,_D2,_H1,_H2,_M3,_M4,_S1,_S2,$Z] = T}) ->
     case list_to_integer([Y1,Y2]) of
