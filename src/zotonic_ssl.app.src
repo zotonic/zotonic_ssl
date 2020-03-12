@@ -1,0 +1,11 @@
+{application, zotonic_ssl, [
+    {description, "Zotonic SSL routines"},
+    {vsn, "git"},
+    {registered, []},
+    {applications, [kernel, stdlib]},
+    {env, []},
+    {modules, []},
+    {maintainers, ["Zotonic Team"]},
+    {licenses, ["Apache 2.0"]},
+    {links, [{"GitHub", "https://github.com/zotonic/zotonic_ssl"}]}
+]}.

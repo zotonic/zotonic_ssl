@@ -1,0 +1,6 @@
+{"1.1.0",
+[{<<"zotonic_stdlib">>,{pkg,<<"zotonic_stdlib">>,<<"1.0.3">>},0}]}.
+[
+{pkg_hash,[
+ {<<"zotonic_stdlib">>, <<"8F2C2345E1C930806C4CE63F9C745F503CF576C0B6EAA19218FCF3775F227E7B">>}]}
+].
