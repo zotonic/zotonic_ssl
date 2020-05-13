@@ -83,9 +83,9 @@ generate_self_signed(CertFile, PemFile, Options) ->
                     ++ " -newkey rsa:"++?BITS++" "
                     ++ " -keyout \"" ++ string:strip(z_filelib:os_filename(KeyFile), both, $') ++ "\""
                     ++ " -out \"" ++ string:strip(z_filelib:os_filename(CertFile), both, $') ++ "\"",
-            error_logger:info_msg("SSL: ~p", [Command]),
+            % error_logger:info_msg("SSL: ~p", [Command]),
             Result = os:cmd(Command),
-            error_logger:info_msg("SSL: ~p", [Result]),
+            % error_logger:info_msg("SSL: ~p", [Result]),
             case file:read_file(KeyFile) of
                 {ok, <<"-----BEGIN PRIVATE KEY", _/binary>>} ->
                     os:cmd("openssl rsa -in "++KeyFile++" -out "++PemFile),
