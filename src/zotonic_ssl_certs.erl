@@ -77,12 +77,12 @@ generate_self_signed(CertFile, PemFile, Options) ->
             Command = "openssl req -x509 -nodes"
                     ++ " -days 3650"
                     ++ " -sha256"
-                    ++ " -subj '/CN=" ++ hostname(Options)
+                    ++ " -subj \"/CN=" ++ hostname(Options)
                              ++"/O=" ++ servername(Options)
-                             ++"'"
+                             ++"\""
                     ++ " -newkey rsa:"++?BITS++" "
-                    ++ " -keyout " ++ z_filelib:os_filename(KeyFile)
-                    ++ " -out " ++ z_filelib:os_filename(CertFile),
+                    ++ " -keyout \"" ++ string:strip(z_filelib:os_filename(KeyFile), both, $') ++ "\""
+                    ++ " -out \"" ++ string:strip(z_filelib:os_filename(CertFile), both, $') ++ "\"",
             % error_logger:info_msg("SSL: ~p", [Command]),
             Result = os:cmd(Command),
             % error_logger:info_msg("SSL: ~p", [Result]),
