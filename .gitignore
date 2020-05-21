@@ -10,5 +10,6 @@ rebar3
 _build/
 _checkouts/
 ebin/
+doc/
 
 test/*_SUITE_data/tmp/
