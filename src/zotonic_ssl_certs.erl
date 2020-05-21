@@ -54,6 +54,10 @@ ensure_self_signed(CertFile, PemFile, Options) ->
             generate_self_signed(CertFile, PemFile, Options)
     end.
 
+%% @doc Check if the file contains a valid private key.
+-spec check_keyfile( file:filename_all() ) -> ok | {error, Reason}
+    when Reason :: {no_private_keys_found, file:filename_all()}
+                 | {cannot_read_pemfile, file:filename_all(), file:posix()}.
 check_keyfile(Filename) ->
     case file:read_file(Filename) of
         {ok, <<"-----BEGIN PRIVATE KEY", _/binary>>} ->
@@ -67,6 +71,9 @@ check_keyfile(Filename) ->
             {error, {cannot_read_pemfile, Filename, Error}}
     end.
 
+%% @doc Generate a self signed certificate with the hostname and servername in the options. The hostname
+%% and servername both default to inet:gethostname/0. The key is generated in the PemFile and the
+%% certificate in the CertFile. If the directory of the PemFile does not exist then it is created.
 -spec generate_self_signed( file:filename_all(), file:filename_all(), options() ) -> ok | {error, term()}.
 generate_self_signed(CertFile, PemFile, Options) ->
     % lager:info("Generating self-signed ssl keys in '~s'", [PemFile]),
@@ -127,6 +134,9 @@ normalize_servername(Hostname) when is_binary(Hostname) ->
 normalize_servername(Servername) when is_list(Servername) ->
     [ C || C <- Servername, is_valid_hostname_char(C) ].
 
+%% @doc Normalize a hostname, filters invalid characters and lowercases the
+%% all alphabetic characters.
+-spec normalize_hostname( binary() | string() ) -> string().
 normalize_hostname(Hostname) when is_binary(Hostname) ->
     normalize_hostname( binary_to_list(Hostname) );
 normalize_hostname(Hostname) when is_list(Hostname) ->
@@ -173,7 +183,7 @@ ciphers() ->
     ].
 
 
-%% @doc Decode a certificate file, return common_name, not_after etc.
+%% @doc Decode a certificate file, return map with 'common_name', 'subject_alt_names' and 'not_after'.
 -spec decode_cert(file:filename_all()) -> {ok, map()} | {error, not_a_certificate}.
 decode_cert(CertFile) ->
     decode_cert_data(file:read_file(CertFile)).

@@ -35,6 +35,7 @@
 
 -define(DEFAULT_DHGROUP, ffdhe3072).
 
+%% @doc Check if the file is a DH file.
 -spec is_dhfile( file:filenam_all() ) -> boolean().
 is_dhfile(Filename) ->
     case file:read_file(Filename) of
@@ -42,10 +43,14 @@ is_dhfile(Filename) ->
         _ -> false
     end.
 
+%% @doc Check if the DH file does exist, if not then create the DH file.
+%% Missing directories are created. The DH group used will be 'ffdhe3072'.
 -spec ensure_dhfile( file:filename_all() ) -> ok | {error, term()}.
 ensure_dhfile(Filename) ->
     ensure_dhfile(Filename, ?DEFAULT_DHGROUP).
 
+%% @doc Check if the DH file does exist, if not then create the DH file.
+%% Missing directories are created.
 -spec ensure_dhfile( file:filename_all(), dhgroup() ) -> ok | {error, term()}.
 ensure_dhfile(Filename, Group) ->
     case filelib:is_file(Filename) of
@@ -60,10 +65,13 @@ ensure_dhfile(Filename, Group) ->
             end
     end.
 
+%% @doc Write a DH file, directory must exist. DH group will be 'ffdhe3072'.
 -spec write_dhfile( file:filename_all() ) -> ok | {error, term()}.
 write_dhfile(Filename) ->
     write_dhfile(Filename, ?DEFAULT_DHGROUP).
 
+%% @doc Write a DH file. Overwrites any existing file. 
+%% The file mode will be set to rw for the user.
 -spec write_dhfile( file:filename_all(), dhgroup() ) -> ok | {error, term()}.
 write_dhfile(Filename, Group) ->
     case file:write_file(Filename, dh_params(Group)) of
