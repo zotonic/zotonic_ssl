@@ -144,28 +144,33 @@ is_valid_hostname_char(_) -> false.
 
 
 
-%% @todo reorder cipher list? See: https://sparanoid.com/note/http2-and-ecdsa-cipher-suites/
-%% ECDHE-RSA-AES128-GCM-SHA256 and ECDHE-ECDSA-AES128-GCM-SHA256 should be at the top.
-%% Otherwise Chrome will give ERR_SPDY_INADEQUATE_TRANSPORT_SECURITY
-%% There is a problem with Firefox, which *needs* a cipher suite not implemented by Erlang
-%% https://github.com/tatsuhiro-t/lucid/blob/ce8654a75108c15cc786424b3faf1a8e945bfd53/README.rst#current-status
+%% @doc Return the list of ciphers for http connections.
+%% This is a re-ordered list that comes from
+%% https://github.com/ssllabs/research/wiki/SSL-and-TLS-Deployment-Best-Practices#23-use-secure-cipher-suites
+-spec ciphers() -> list( string() ).
 ciphers() ->
-     [
-        "ECDHE-ECDSA-AES256-GCM-SHA384","ECDHE-RSA-AES256-GCM-SHA384",
-        "ECDHE-ECDSA-AES256-SHA384","ECDHE-RSA-AES256-SHA384", "ECDHE-ECDSA-DES-CBC3-SHA",
-        "ECDH-ECDSA-AES256-GCM-SHA384","ECDH-RSA-AES256-GCM-SHA384","ECDH-ECDSA-AES256-SHA384",
-        "ECDH-RSA-AES256-SHA384","DHE-DSS-AES256-GCM-SHA384","DHE-DSS-AES256-SHA256",
-        "AES256-GCM-SHA384","AES256-SHA256","ECDHE-ECDSA-AES128-GCM-SHA256",
-        "ECDHE-RSA-AES128-GCM-SHA256","ECDHE-ECDSA-AES128-SHA256","ECDHE-RSA-AES128-SHA256",
-        "ECDH-ECDSA-AES128-GCM-SHA256","ECDH-RSA-AES128-GCM-SHA256","ECDH-ECDSA-AES128-SHA256",
-        "ECDH-RSA-AES128-SHA256","DHE-DSS-AES128-GCM-SHA256","DHE-DSS-AES128-SHA256",
-        "AES128-GCM-SHA256","AES128-SHA256","ECDHE-ECDSA-AES256-SHA",
-        "ECDHE-RSA-AES256-SHA","DHE-DSS-AES256-SHA","ECDH-ECDSA-AES256-SHA",
-        "ECDH-RSA-AES256-SHA","AES256-SHA","ECDHE-ECDSA-AES128-SHA",
-        "ECDHE-RSA-AES128-SHA","DHE-DSS-AES128-SHA","ECDH-ECDSA-AES128-SHA",
-        "ECDH-RSA-AES128-SHA","AES128-SHA"
+    [
+        "ECDHE-ECDSA-AES256-GCM-SHA384",
+        "ECDHE-RSA-AES256-GCM-SHA384",
+        "ECDHE-ECDSA-AES256-SHA384",
+        "ECDHE-RSA-AES256-SHA384",
+        "DHE-RSA-AES256-GCM-SHA384",
+
+        "ECDHE-ECDSA-AES128-GCM-SHA256",
+        "ECDHE-ECDSA-AES128-SHA256",
+        "ECDHE-RSA-AES128-GCM-SHA256",
+        "ECDHE-RSA-AES128-SHA256",
+        "DHE-RSA-AES128-GCM-SHA256",
+        "DHE-RSA-AES128-SHA256",
+        "DHE-RSA-AES256-SHA256",
+
+        "ECDHE-ECDSA-AES128-SHA",
+        "ECDHE-ECDSA-AES256-SHA",
+        "ECDHE-RSA-AES128-SHA",
+        "ECDHE-RSA-AES256-SHA",
+        "DHE-RSA-AES128-SHA",
+        "DHE-RSA-AES256-SHA"
     ].
-    % ssl:cipher_suites().
 
 
 %% @doc Decode a certificate file, return common_name, not_after etc.
@@ -219,6 +224,8 @@ decode_subject({rdnSequence, _} = R) ->
             #{},
             lists:flatten(List)).
 
+decode_sans(asn1_NOVALUE) ->
+    [];
 decode_sans([]) ->
     [];
 decode_sans([#'Extension'{extnID=?'id-ce-subjectAltName', extnValue=V} | _]) ->
