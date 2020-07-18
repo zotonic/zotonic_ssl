@@ -21,7 +21,8 @@ end_per_testcase(_TestCase, _Config) ->
 
 all() ->
     [
-        generate_self_signed
+        generate_self_signed,
+        safe_protocol_versions
     ].
 
 %%--------------------------------------------------------------------
@@ -45,6 +46,13 @@ generate_self_signed(Config) ->
         subject_alt_names := []
     } = CertInfo,
     ok.
+
+safe_protocol_versions(_Config) ->
+    Versions = zotonic_ssl_certs:safe_protocol_versions(),
+    true = (length(Versions) > 0),
+    true = (length(Versions) =< 2),
+    ok.
+
 
 tmpdir(Config) ->
     {data_dir, DataDir} = proplists:lookup(data_dir, Config),

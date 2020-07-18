@@ -27,7 +27,9 @@
     check_keyfile/1,
     ciphers/0,
     decode_cert/1,
-    normalize_hostname/1
+    normalize_hostname/1,
+
+    safe_protocol_versions/0
 ]).
 
 -include_lib("public_key/include/public_key.hrl").
@@ -182,6 +184,12 @@ ciphers() ->
         "DHE-RSA-AES256-SHA"
     ].
 
+%% @doc Return a list with safe tls versions provided by this erlang installation.
+-spec safe_protocol_versions() -> [ssl:tls_version()].
+safe_protocol_versions() ->
+    {available, Versions} = proplists:lookup(available, ssl:versions()),
+    [V || V <- Versions, is_safe_version(V)].
+
 
 %% @doc Decode a certificate file, return map with 'common_name', 'subject_alt_names' and 'not_after'.
 -spec decode_cert(file:filename_all()) -> {ok, map()} | {error, not_a_certificate}.
@@ -249,4 +257,13 @@ decode_sans([_|Exts]) ->
 decode_value({dNSName, Name}) -> iolist_to_binary(Name);
 decode_value({printableString, P}) -> iolist_to_binary(P);
 decode_value({utf8String, B}) -> B.
+
+%% Return true if the tls protocol is a known safe protocol.
+is_safe_version(sslv3) -> false;
+is_safe_version(tlsv1) -> false;
+is_safe_version('tlsv1.1') -> false;
+is_safe_version('tlsv1.2') -> true;
+is_safe_version('tlsv1.3') -> true;
+is_safe_version(_) -> false.
+
 
