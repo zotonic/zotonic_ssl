@@ -395,6 +395,6 @@ ensure_loaded(Module) ->
     %% Ensure the module is loaded. Needed in order to check for exported functions.
     case code:ensure_loaded(Module) of
         {module, Module} -> true;
-        {error, nofile} -> false
+        {error, _} -> false
     end.
 
