@@ -24,7 +24,8 @@ all() ->
         generate_self_signed,
         safe_protocol_versions,
         sort_cipher_suite,
-        ciphers_are_safe
+        ciphers_are_safe,
+        release_provides_safe_ciphers
     ].
 
 %%--------------------------------------------------------------------
@@ -61,6 +62,7 @@ sort_cipher_suite(_Config) ->
     Ciphers = zotonic_ssl_certs:ciphers(),
     Sorted = zotonic_ssl_certs:sort_cipher_suites(Ciphers),
 
+    % Check if we provide the ciphers sorted.
     true = (length(Ciphers) == length(Sorted)),
     true = (Ciphers == Sorted),
 
@@ -74,6 +76,12 @@ ciphers_are_safe(_Config) ->
     true = (length(Ciphers) == length(Filtered)),
     true = (Ciphers == Filtered),
 
+    ok.
+
+release_provides_safe_ciphers(_Config) ->
+    % Check if this erlang release provides safe ciphers.
+    Available = zotonic_ssl_certs:filter_unavailable_cipher_suites(zotonic_ssl_certs:ciphers()),
+    true = (length(Available) > 0),
     ok.
 
 tmpdir(Config) ->

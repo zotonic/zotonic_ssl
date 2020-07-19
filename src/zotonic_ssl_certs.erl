@@ -25,11 +25,12 @@
     ensure_self_signed/3,
     generate_self_signed/3,
     check_keyfile/1,
-    ciphers/0,
     decode_cert/1,
     normalize_hostname/1,
 
+    ciphers/0,
     safe_protocol_versions/0,
+    filter_unavailable_cipher_suites/1,
     filter_unsafe_cipher_suites/1,
     sort_cipher_suites/1,
     suite_sort_criteria/1
@@ -193,6 +194,10 @@ safe_protocol_versions() ->
     [V || V <- Versions, is_safe_version(V)].
 
 
+%% @doc Remove cipher suites which are not available by the underlying crypto library.
+filter_unavailable_cipher_suites(Suites) ->
+    [S || S <- Suites, is_available_cipher_suite(S)].
+
 %% @doc Remove the unsafe cipher suites from the provided list.
 filter_unsafe_cipher_suites(Suites) ->
     [S || S <- Suites, is_safe_cipher_suite(S)].
@@ -349,10 +354,30 @@ str_to_suite(Str) ->
            str_to_suite(ssl_cipher, Str)
     end.
 
+%%
 str_to_suite(Mod, Str) when is_list(Str) ->
     str_to_suite(Mod, Mod:openssl_suite(Str));
 str_to_suite(Mod, Str) when is_binary(Str) ->
     Mod:suite_definition(Str).
+
+
+%% Return true if the cipher suite is available in the cryptolib of this erlang
+%% installation
+is_available_cipher_suite(Str) when is_list(Str) ->
+    is_available_cipher_suite(str_to_suite(Str));
+is_available_cipher_suite(Suite) ->
+    ensure_loaded(ssl),
+    
+    HasSSLFilterCipherSuites = erlang:function_exported(ssl, filter_cipher_suites, 2),
+
+    Suites = if HasSSLFilterCipherSuites ->
+                    %% OPT-20.3 and up
+                    ssl:filter_cipher_suites([Suite], []);
+                true ->
+                    throw(no_ssl_filter_cipher_suites)
+             end,
+
+    length(Suites) == 1.
 
     
 has_ec_key_exchange(ecdhe_rsa) -> true;
