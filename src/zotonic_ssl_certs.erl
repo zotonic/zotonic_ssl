@@ -30,8 +30,8 @@
 
     ciphers/0,
     safe_protocol_versions/0,
-    filter_unavailable_cipher_suites/1,
-    filter_unsafe_cipher_suites/1,
+    remove_unavailable_cipher_suites/1,
+    remove_unsafe_cipher_suites/1,
     sort_cipher_suites/1,
     suite_sort_criteria/1
 ]).
@@ -195,11 +195,11 @@ safe_protocol_versions() ->
 
 
 %% @doc Remove cipher suites which are not available by the underlying crypto library.
-filter_unavailable_cipher_suites(Suites) ->
+remove_unavailable_cipher_suites(Suites) ->
     [S || S <- Suites, is_available_cipher_suite(S)].
 
 %% @doc Remove the unsafe cipher suites from the provided list.
-filter_unsafe_cipher_suites(Suites) ->
+remove_unsafe_cipher_suites(Suites) ->
     [S || S <- Suites, is_safe_cipher_suite(S)].
 
 %% @doc Sort the cipher suite into a preferrable safe order.
@@ -279,9 +279,6 @@ decode_value({printableString, P}) -> iolist_to_binary(P);
 decode_value({utf8String, B}) -> B.
 
 %% Return true if the tls protocol is a known safe protocol.
-is_safe_version(sslv3) -> false;
-is_safe_version(tlsv1) -> false;
-is_safe_version('tlsv1.1') -> false;
 is_safe_version('tlsv1.2') -> true;
 is_safe_version('tlsv1.3') -> true;
 is_safe_version(_) -> false.
@@ -300,10 +297,11 @@ is_safe_cipher_suite(KeyExchange, Cipher, Mac) ->
     is_safe_key_exchange(KeyExchange) andalso is_safe_cipher(Cipher) andalso is_safe_mac(Mac).
     
 %% Return true if the key exchange algorithm is safe.
-is_safe_key_exchange(rsa) -> false;
-is_safe_key_exchange(ecdh_rsa) -> false;
-is_safe_key_exchange(ecdh_ecdsa) -> false;
-is_safe_key_exchange(_) -> true.
+is_safe_key_exchange(ecdhe_ecdsa) -> true;
+is_safe_key_exchange(ecdhe_rsa) -> true;
+is_safe_key_exchange(dhe_rsa) -> true;
+is_safe_key_exchange(dhe_dss) -> true;
+is_safe_key_exchange(_) -> false.
 
 %% Return true if the cipher is safe
 is_safe_cipher(null) -> false;

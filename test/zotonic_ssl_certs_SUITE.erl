@@ -70,7 +70,7 @@ sort_cipher_suite(_Config) ->
 
 ciphers_are_safe(_Config) ->
     Ciphers = zotonic_ssl_certs:ciphers(),
-    Filtered = zotonic_ssl_certs:filter_unsafe_cipher_suites(Ciphers),
+    Filtered = zotonic_ssl_certs:remove_unsafe_cipher_suites(Ciphers),
 
     % The default ciphers we provide should be safe. 
     true = (length(Ciphers) == length(Filtered)),
@@ -80,7 +80,7 @@ ciphers_are_safe(_Config) ->
 
 release_provides_safe_ciphers(_Config) ->
     % Check if this erlang release provides safe ciphers.
-    Available = zotonic_ssl_certs:filter_unavailable_cipher_suites(zotonic_ssl_certs:ciphers()),
+    Available = zotonic_ssl_certs:remove_unavailable_cipher_suites(zotonic_ssl_certs:ciphers()),
     true = (length(Available) > 0),
     ok.
 
