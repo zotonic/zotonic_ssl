@@ -374,7 +374,7 @@ is_available_cipher_suite(Suite) ->
                     %% OPT-20.3 and up
                     ssl:filter_cipher_suites([Suite], []);
                 true ->
-                    throw(no_ssl_filter_cipher_suites)
+                    ssl_cipher:filter_suites([Suite])
              end,
 
     length(Suites) == 1.
