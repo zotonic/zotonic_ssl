@@ -22,7 +22,9 @@ end_per_testcase(_TestCase, _Config) ->
 all() ->
     [
         generate_self_signed,
-        safe_protocol_versions
+        safe_protocol_versions,
+        sort_cipher_suite,
+        ciphers_are_safe
     ].
 
 %%--------------------------------------------------------------------
@@ -49,10 +51,28 @@ generate_self_signed(Config) ->
 
 safe_protocol_versions(_Config) ->
     Versions = zotonic_ssl_certs:safe_protocol_versions(),
+
+    % Check if there are safe protocols available. This test
     true = (length(Versions) > 0),
     true = (length(Versions) =< 2),
     ok.
 
+sort_cipher_suite(_Config) ->
+    Ciphers = zotonic_ssl_certs:ciphers(),
+    Sorted = zotonic_ssl_certs:sort_cipher_suites(Ciphers),
+
+    true = (length(Ciphers) == length(Sorted)),
+
+    ok.
+
+ciphers_are_safe(_Config) ->
+    Ciphers = zotonic_ssl_certs:ciphers(),
+    Filtered = zotonic_ssl_certs:filter_unsafe_cipher_suites(Ciphers),
+
+    % The default ciphers we provide should be safe. 
+    true = (Ciphers == Filtered),
+
+    ok.
 
 tmpdir(Config) ->
     {data_dir, DataDir} = proplists:lookup(data_dir, Config),
