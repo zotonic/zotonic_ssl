@@ -163,28 +163,28 @@ is_valid_hostname_char(_) -> false.
 %% https://github.com/ssllabs/research/wiki/SSL-and-TLS-Deployment-Best-Practices#23-use-secure-cipher-suites
 -spec ciphers() -> list( string() ).
 ciphers() ->
-    [
-        "ECDHE-ECDSA-AES256-GCM-SHA384",
-        "ECDHE-RSA-AES256-GCM-SHA384",
-        "ECDHE-ECDSA-AES256-SHA384",
-        "ECDHE-RSA-AES256-SHA384",
-        "DHE-RSA-AES256-GCM-SHA384",
+    ["ECDHE-ECDSA-AES256-GCM-SHA384",
+     "ECDHE-ECDSA-AES128-GCM-SHA256",
+     "ECDHE-RSA-AES256-GCM-SHA384",
+     "ECDHE-RSA-AES128-GCM-SHA256",
 
-        "ECDHE-ECDSA-AES128-GCM-SHA256",
-        "ECDHE-ECDSA-AES128-SHA256",
-        "ECDHE-RSA-AES128-GCM-SHA256",
-        "ECDHE-RSA-AES128-SHA256",
-        "DHE-RSA-AES128-GCM-SHA256",
-        "DHE-RSA-AES128-SHA256",
-        "DHE-RSA-AES256-SHA256",
+     "ECDHE-ECDSA-AES256-SHA384",
+     "ECDHE-ECDSA-AES256-SHA",
+     "ECDHE-ECDSA-AES128-SHA256",
+     "ECDHE-ECDSA-AES128-SHA",
 
-        "ECDHE-ECDSA-AES128-SHA",
-        "ECDHE-ECDSA-AES256-SHA",
-        "ECDHE-RSA-AES128-SHA",
-        "ECDHE-RSA-AES256-SHA",
-        "DHE-RSA-AES128-SHA",
-        "DHE-RSA-AES256-SHA"
-    ].
+     "ECDHE-RSA-AES256-SHA384",
+     "ECDHE-RSA-AES256-SHA",
+     "ECDHE-RSA-AES128-SHA256",
+     "ECDHE-RSA-AES128-SHA",
+
+     "DHE-RSA-AES256-GCM-SHA384",
+     "DHE-RSA-AES128-GCM-SHA256",
+
+     "DHE-RSA-AES256-SHA256",
+     "DHE-RSA-AES256-SHA",
+     "DHE-RSA-AES128-SHA256",
+     "DHE-RSA-AES128-SHA"].
 
 %% @doc Return a list with safe tls versions provided by this erlang installation.
 -spec safe_protocol_versions() -> [ssl:tls_version()].
@@ -393,9 +393,8 @@ hash_size(_) -> 0.
 % to ensure that the module was loaded.
 ensure_loaded(Module) ->
     %% Ensure the module is loaded. Needed in order to check for exported functions.
-    case code:load_file(Module) of
+    case code:ensure_loaded(Module) of
         {module, Module} -> true;
-        {error, not_purged} -> true;
         {error, nofile} -> false
     end.
 

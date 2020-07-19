@@ -62,6 +62,7 @@ sort_cipher_suite(_Config) ->
     Sorted = zotonic_ssl_certs:sort_cipher_suites(Ciphers),
 
     true = (length(Ciphers) == length(Sorted)),
+    true = (Ciphers == Sorted),
 
     ok.
 
@@ -70,6 +71,7 @@ ciphers_are_safe(_Config) ->
     Filtered = zotonic_ssl_certs:filter_unsafe_cipher_suites(Ciphers),
 
     % The default ciphers we provide should be safe. 
+    true = (length(Ciphers) == length(Filtered)),
     true = (Ciphers == Filtered),
 
     ok.
