@@ -20,6 +20,8 @@
 -author('Maas-Maarten Zeeman <mmzeeman@xs4all.nl>').
 
 -export([
+    get_safe_tls_server_options/0,
+
     ciphers/0,
     safe_protocol_versions/0,
     remove_unavailable_cipher_suites/1,
@@ -27,6 +29,41 @@
     sort_cipher_suites/1,
     suite_sort_criteria/1
 ]).
+
+%% @doc Return safe ssl socket options
+get_safe_tls_server_options() ->
+    Versions = safe_protocol_versions(),
+    Ciphers = collect_suites(Versions),
+
+    SafeCiphers = remove_unsafe_cipher_suites(Ciphers),
+    AvailableSafeCiphers = remove_unavailable_cipher_suites(SafeCiphers),
+    SortedSafeCiphers = sort_cipher_suites(AvailableSafeCiphers),
+
+    CommonOpts = [
+                  {versions, Versions},
+                  {ciphers, SortedSafeCiphers}
+                 ],
+
+
+    %% Add tls v1.3 option, when it is supported by the underlying erlang system
+    case lists:member('tlsv1.3', Versions) of
+        true ->
+            [{session_tickets, stateless}
+             | CommonOpts];
+        false -> CommonOpts
+    end.
+
+
+collect_suites(Versions) ->
+    Set = collect_suites(Versions, sets:new()),
+    sets:to_list(Set).
+
+collect_suites([], Set) ->
+    Set;
+collect_suites([Version|Rest], Set) ->
+    Ciphers = ssl:cipher_suites(default, Version),
+    collect_suites(Rest, sets:union(Set, sets:from_list(Ciphers))).
+
 
 %% @doc Return the list of ciphers for http connections.
 %% This is a re-ordered list that comes from
@@ -55,7 +92,6 @@ ciphers() ->
      "DHE-RSA-AES256-SHA",
      "DHE-RSA-AES128-SHA256",
      "DHE-RSA-AES128-SHA"].
-
 
 
 %% @doc Return a list with safe tls versions provided by this erlang installation.
@@ -226,5 +262,4 @@ ensure_loaded(Module) ->
         {module, Module} -> true;
         {error, _} -> false
     end.
-
 
