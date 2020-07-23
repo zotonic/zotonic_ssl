@@ -33,8 +33,9 @@
 %% @doc Return safe ssl socket options
 get_safe_tls_server_options() ->
     Versions = safe_protocol_versions(),
-    Ciphers = collect_suites(Versions),
 
+    %% Collect the supported safe cipher suites
+    Ciphers = collect_suites(Versions),
     SafeCiphers = remove_unsafe_cipher_suites(Ciphers),
     AvailableSafeCiphers = remove_unavailable_cipher_suites(SafeCiphers),
     SortedSafeCiphers = sort_cipher_suites(AvailableSafeCiphers),
@@ -43,7 +44,6 @@ get_safe_tls_server_options() ->
                   {versions, Versions},
                   {ciphers, SortedSafeCiphers}
                  ],
-
 
     %% Add tls v1.3 option, when it is supported by the underlying erlang system
     case lists:member('tlsv1.3', Versions) of
@@ -61,7 +61,16 @@ collect_suites(Versions) ->
 collect_suites([], Set) ->
     Set;
 collect_suites([Version|Rest], Set) ->
-    Ciphers = ssl:cipher_suites(default, Version),
+    true = ensure_loaded(ssl),
+
+    Ciphers = case erlang:function_exported(ssl, cipher_suites, 2) of
+                  true ->
+                      % OTP 20 and up
+                      ssl:cipher_suites(default, Version);
+                  false ->
+                      ssl_cipher:suites(
+                        tls_record:protocol_version(Version))
+              end,
     collect_suites(Rest, sets:union(Set, sets:from_list(Ciphers))).
 
 

@@ -24,7 +24,8 @@ all() ->
         safe_protocol_versions,
         sort_cipher_suite,
         ciphers_are_safe,
-        release_provides_safe_ciphers
+        release_provides_safe_ciphers,
+        get_safe_options
     ].
 
 %%--------------------------------------------------------------------
@@ -36,7 +37,8 @@ safe_protocol_versions(_Config) ->
 
     % Check if there are safe protocols available. This test
     true = (length(Versions) > 0),
-    true = (length(Versions) =< 2),
+    true = (length(Versions) =< 2),  %% ATM there are 2 safe versions
+
     ok.
 
 sort_cipher_suite(_Config) ->
@@ -65,4 +67,17 @@ release_provides_safe_ciphers(_Config) ->
     Available = zotonic_ssl_option:remove_unavailable_cipher_suites(zotonic_ssl_option:ciphers()),
     true = (length(Available) > 0),
     ok.
+
+get_safe_options(_Config) ->
+    Options = zotonic_ssl_option:get_safe_tls_server_options(),
+
+    %% There are safe protocol versions
+    {versions, Versions} = proplists:lookup(versions, Options),
+    true = (length(Versions) > 0),
+
+    {ciphers, Ciphers} = proplists:lookup(ciphers, Options),
+    true = (length(Ciphers) > 0),
+
+    ok.
+
 
