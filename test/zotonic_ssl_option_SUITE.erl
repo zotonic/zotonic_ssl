@@ -78,6 +78,8 @@ get_safe_options(_Config) ->
     {ciphers, Ciphers} = proplists:lookup(ciphers, Options),
     true = (length(Ciphers) > 0),
 
+    {honor_cipher_order, true} = proplists:lookup(honor_cipher_order, Options),
+
     ok.
 
 

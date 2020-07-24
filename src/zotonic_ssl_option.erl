@@ -42,13 +42,15 @@ get_safe_tls_server_options() ->
 
     CommonOpts = [
                   {versions, Versions},
-                  {ciphers, SortedSafeCiphers}
+                  {ciphers, SortedSafeCiphers},
+                  {honor_cipher_order, true}
                  ],
 
     %% Add tls v1.3 option, when it is supported by the underlying erlang system
     case lists:member('tlsv1.3', Versions) of
         true ->
-            [{session_tickets, stateless}
+            [{session_tickets, stateless},
+             {anti_replay,  {10, 5, 2457600}}  % About 250k entries at 1% false positive rate, filter is 300Kb in size.
              | CommonOpts];
         false -> CommonOpts
     end.
