@@ -24,6 +24,7 @@
 
     ciphers/0,
     safe_protocol_versions/0,
+    safe_eccs/0,
     remove_unavailable_cipher_suites/1,
     remove_unsafe_cipher_suites/1,
     sort_cipher_suites/1,
@@ -39,11 +40,17 @@ get_safe_tls_server_options() ->
     SafeCiphers = remove_unsafe_cipher_suites(Ciphers),
     AvailableSafeCiphers = remove_unavailable_cipher_suites(SafeCiphers),
     SortedSafeCiphers = sort_cipher_suites(AvailableSafeCiphers),
+    
+    %% Collect the safe eccs supported by this OTP version.
+    SafeEccs = safe_eccs(),
 
     CommonOpts = [
                   {versions, Versions},
                   {ciphers, SortedSafeCiphers},
-                  {honor_cipher_order, true}
+                  {eccs, SafeEccs},
+                  {honor_cipher_order, true},
+                  {secure_renegotiate, true},
+                  {reuse_sessions, true}
                  ],
 
     %% Add tls v1.3 option, when it is supported by the underlying erlang system
@@ -111,6 +118,11 @@ safe_protocol_versions() ->
     {available, Versions} = proplists:lookup(available, ssl:versions()),
     [V || V <- Versions, is_safe_version(V)].
 
+
+safe_eccs() ->
+    Eccs = ssl:eccs(),
+    [E || E <- Eccs, is_safe_ecc(E)].
+
 %% @doc Remove cipher suites which are not available by the underlying crypto library.
 remove_unavailable_cipher_suites(Suites) ->
     [S || S <- Suites, is_available_cipher_suite(S)].
@@ -136,6 +148,14 @@ is_safe_version('tlsv1.2') -> true;
 is_safe_version('tlsv1.3') -> true;
 is_safe_version(_) -> false.
 
+%% Return true if the ecc is considered safe.
+is_safe_ecc(secp384r1) -> true;
+is_safe_ecc(secp256r1) -> true;
+is_safe_ecc(x448) -> true;
+is_safe_ecc(x25519) -> true;
+is_safe_ecc(secp224r1) -> true; % but phase out.
+is_safe_ecc(_) -> false.
+
 %% Return true if the cipher suite is safe.
 is_safe_cipher_suite({KeyExchange, Cipher, Mac}) ->
     is_safe_cipher_suite(KeyExchange, Cipher, Mac);
@@ -150,11 +170,13 @@ is_safe_cipher_suite(KeyExchange, Cipher, Mac) ->
     is_safe_key_exchange(KeyExchange) andalso is_safe_cipher(Cipher) andalso is_safe_mac(Mac).
     
 %% Return true if the key exchange algorithm is safe.
-is_safe_key_exchange(ecdhe_ecdsa) -> true;
-is_safe_key_exchange(ecdhe_rsa) -> true;
-is_safe_key_exchange(dhe_rsa) -> true;
-is_safe_key_exchange(dhe_dss) -> true;
-is_safe_key_exchange(_) -> false.
+is_safe_key_exchange(srp_dss) -> false;
+is_safe_key_exchange(srp_rsa) -> false;
+is_safe_key_exchange(rsa) -> false;
+is_safe_key_exchange(rsa_psk) -> false;
+is_safe_key_exchange(ecdh_rsa) -> false;
+is_safe_key_exchange(ecdh_ecdsa) -> false;
+is_safe_key_exchange(_) -> true.
 
 %% Return true if the cipher is safe
 is_safe_cipher(null) -> false;
@@ -172,20 +194,18 @@ is_safe_mac(_) -> true.
 
 %% Return the suite sort criteria, a tuple with things we want to rank the suites with.
 suite_sort_criteria({KeyExchange, Cipher, Mac}) ->
-    suite_sort_criteria(KeyExchange, Cipher, Mac);
-suite_sort_criteria({KeyExchange, Cipher, Mac, _Prf}) ->
-    suite_sort_criteria(KeyExchange, Cipher, Mac);
-suite_sort_criteria(#{key_exchange := KeyExchange, cipher := Cipher, mac := Mac}) ->
-    suite_sort_criteria(KeyExchange, Cipher, Mac);
+    suite_sort_criteria(KeyExchange, Cipher, Mac, undefined);
+suite_sort_criteria({KeyExchange, Cipher, Mac, Prf}) ->
+    suite_sort_criteria(KeyExchange, Cipher, Mac, Prf);
+suite_sort_criteria(#{key_exchange := KeyExchange, cipher := Cipher, mac := Mac, prf := Prf}) ->
+    suite_sort_criteria(KeyExchange, Cipher, Mac, Prf);
 suite_sort_criteria(Str) when is_list(Str) orelse is_binary(Str) ->
     suite_sort_criteria(str_to_suite(Str)).
 
-suite_sort_criteria(KeyExchange, Cipher, Mac) ->
-    {has_ec_key_exchange(KeyExchange),
-     has_aead(Cipher),
-     has_ecdsa(KeyExchange),
-     effective_key_bits(Cipher),
-     hash_size(Mac)}.
+suite_sort_criteria(KeyExchange, Cipher, aead, Prf) ->
+    {has_ec_key_exchange(KeyExchange), true, has_ecdsa(KeyExchange), effective_key_bits(Cipher), hash_size(Prf)};
+suite_sort_criteria(KeyExchange, Cipher, Mac, _Prf) ->
+    {has_ec_key_exchange(KeyExchange), false, has_ecdsa(KeyExchange), effective_key_bits(Cipher), hash_size(Mac)}.
 
 %% Return suite information based on the binary, or list provided. Needs a lot of workarounds
 %% for various erlang releases.
@@ -233,12 +253,9 @@ is_available_cipher_suite(Suite) ->
     
 has_ec_key_exchange(ecdhe_rsa) -> true;
 has_ec_key_exchange(ecdhe_ecdsa) -> true;
-has_ec_key_exchange(_) -> false.
-
-has_aead(aes_128_gcm) -> true;
-has_aead(aes_256_gcm) -> true;
-has_aead(chacha20_poly1305) -> true;
-has_aead(_) -> false.
+has_ec_key_exchange(any) -> true; % TLS 1.3 cipher suite
+has_ec_key_exchange(_A) ->
+    false.
 
 has_ecdsa(ecdhe_ecdsa) -> true;
 has_ecdsa(ecdh_ecdsa) -> true;
