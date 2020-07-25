@@ -27,8 +27,7 @@
     safe_eccs/0,
     remove_unavailable_cipher_suites/1,
     remove_unsafe_cipher_suites/1,
-    sort_cipher_suites/1,
-    suite_sort_criteria/1
+    sort_cipher_suites/1
 ]).
 
 %% @doc Return safe ssl socket options
