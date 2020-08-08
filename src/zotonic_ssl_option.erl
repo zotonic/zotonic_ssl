@@ -43,23 +43,18 @@ get_safe_tls_server_options() ->
     %% Collect the safe eccs supported by this OTP version.
     SafeEccs = safe_eccs(),
 
-    CommonOpts = [
-                  {versions, Versions},
-                  {ciphers, SortedSafeCiphers},
-                  {eccs, SafeEccs},
-                  {honor_cipher_order, true},
-                  {secure_renegotiate, true},
-                  {reuse_sessions, true}
-                 ],
-
-    %% Add tls v1.3 option, when it is supported by the underlying erlang system
-    case lists:member('tlsv1.3', Versions) of
-        true ->
-            [{session_tickets, stateless},
-             {anti_replay,  {10, 5, 2457600}}  % About 250k entries at 1% false positive rate, filter is 300Kb in size.
-             | CommonOpts];
-        false -> CommonOpts
-    end.
+    %% Note: In OTP 23.1 it is possible to enable session_tickets, and ticket
+    %% replay prevention. This will speed up connecting.
+    %% Although documented and exported this does not work in OTP 23.0
+    
+    [
+     {versions, Versions},
+     {ciphers, SortedSafeCiphers},
+     {eccs, SafeEccs},
+     {honor_cipher_order, true},
+     {secure_renegotiate, true},
+     {reuse_sessions, true}
+    ].
 
 
 collect_suites(Versions) ->
