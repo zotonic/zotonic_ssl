@@ -25,9 +25,9 @@
     ensure_self_signed/3,
     generate_self_signed/3,
     check_keyfile/1,
-    ciphers/0,
     decode_cert/1,
-    normalize_hostname/1
+    normalize_hostname/1,
+    ciphers/0
 ]).
 
 -include_lib("public_key/include/public_key.hrl").
@@ -153,35 +153,10 @@ is_valid_hostname_char($-) -> true;
 is_valid_hostname_char(_) -> false.
 
 
-
 %% @doc Return the list of ciphers for http connections.
-%% This is a re-ordered list that comes from
-%% https://github.com/ssllabs/research/wiki/SSL-and-TLS-Deployment-Best-Practices#23-use-secure-cipher-suites
 -spec ciphers() -> list( string() ).
 ciphers() ->
-    [
-        "ECDHE-ECDSA-AES256-GCM-SHA384",
-        "ECDHE-RSA-AES256-GCM-SHA384",
-        "ECDHE-ECDSA-AES256-SHA384",
-        "ECDHE-RSA-AES256-SHA384",
-        "DHE-RSA-AES256-GCM-SHA384",
-
-        "ECDHE-ECDSA-AES128-GCM-SHA256",
-        "ECDHE-ECDSA-AES128-SHA256",
-        "ECDHE-RSA-AES128-GCM-SHA256",
-        "ECDHE-RSA-AES128-SHA256",
-        "DHE-RSA-AES128-GCM-SHA256",
-        "DHE-RSA-AES128-SHA256",
-        "DHE-RSA-AES256-SHA256",
-
-        "ECDHE-ECDSA-AES128-SHA",
-        "ECDHE-ECDSA-AES256-SHA",
-        "ECDHE-RSA-AES128-SHA",
-        "ECDHE-RSA-AES256-SHA",
-        "DHE-RSA-AES128-SHA",
-        "DHE-RSA-AES256-SHA"
-    ].
-
+    zotonic_ssl_option:ciphers().
 
 %% @doc Decode a certificate file, return map with 'common_name', 'subject_alt_names' and 'not_after'.
 -spec decode_cert(file:filename_all()) -> {ok, map()} | {error, not_a_certificate}.
@@ -249,4 +224,5 @@ decode_sans([_|Exts]) ->
 decode_value({dNSName, Name}) -> iolist_to_binary(Name);
 decode_value({printableString, P}) -> iolist_to_binary(P);
 decode_value({utf8String, B}) -> B.
+
 
