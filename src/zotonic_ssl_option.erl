@@ -43,9 +43,8 @@ get_safe_tls_server_options() ->
     %% Collect the safe eccs supported by this OTP version.
     SafeEccs = safe_eccs(),
 
-    %% Note: In OTP 23.1 it is possible to enable session_tickets, and ticket
-    %% replay prevention. This will speed up connecting.
-    %% Although documented and exported this does not work in OTP 23.0
+    %% Get the safe choice for TLS session tickets.
+    SessionTicketOptions = safe_session_ticket_options(),
     
     [
      {versions, Versions},
@@ -54,8 +53,20 @@ get_safe_tls_server_options() ->
      {honor_cipher_order, true},
      {secure_renegotiate, true},
      {reuse_sessions, true}
-    ].
+    ] ++ SessionTicketOptions.
 
+safe_session_ticket_options() ->
+    %% This function is exported in OTP 23.2. In 23.0 the session ticket
+    %% mechanism was already exported, but non functional. In 23.2 it is 
+    %% know to work.
+    case ssl_version() >= [10, 3] of
+        true ->
+            [{session_tickets, stateless},
+             {anti_replay, '100k'}];
+        false ->
+            []
+    end.
+     
 
 collect_suites(Versions) ->
     Set = collect_suites(Versions, sets:new()),
@@ -284,4 +295,10 @@ ensure_loaded(Module) ->
         {module, Module} -> true;
         {error, _} -> false
     end.
+
+%% Return a list with with integers with the version number of the ssl app
+ssl_version() ->
+    AppVersion = proplists:get_value(ssl_app, ssl:versions()),
+    [erlang:binary_to_integer(N) || N <- binary:split(erlang:list_to_binary(AppVersion), <<".">>, [global])].
+
 
