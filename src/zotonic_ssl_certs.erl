@@ -1,9 +1,9 @@
 %% @author Marc Worrell <marc@worrell.nl>
 %% @author Maas-Maarten Zeeman <mmzeeman@xs4all.nl>
-%% @copyright 2012-2020 Marc Worrell, Maas-Maarten Zeeman
+%% @copyright 2012-2021 Marc Worrell, Maas-Maarten Zeeman
 %% @doc SSL support functions, create self-signed certificates
 
-%% Copyright 2012-2020 Marc Worrell, Maas-Maarten Zeeman
+%% Copyright 2012-2021 Marc Worrell, Maas-Maarten Zeeman
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -88,14 +88,14 @@ generate_self_signed(CertFile, PemFile, Options) ->
                              ++"/O=" ++ servername(Options)
                              ++"\""
                     ++ " -newkey rsa:"++?BITS++" "
-                    ++ " -keyout \"" ++ string:strip(z_filelib:os_filename(KeyFile), both, $') ++ "\""
-                    ++ " -out \"" ++ string:strip(z_filelib:os_filename(CertFile), both, $') ++ "\"",
-            % error_logger:info_msg("SSL: ~p", [Command]),
+                    ++ " -keyout " ++ os_filename(KeyFile)
+                    ++ " -out " ++ os_filename(CertFile),
+            % error_logger:info_msg("SSL: ~s", [Command]),
             Result = os:cmd(Command),
             % error_logger:info_msg("SSL: ~p", [Result]),
             case file:read_file(KeyFile) of
                 {ok, <<"-----BEGIN PRIVATE KEY", _/binary>>} ->
-                    os:cmd("openssl rsa -in "++KeyFile++" -out "++PemFile),
+                    _ = os:cmd("openssl rsa -in " ++ os_filename(KeyFile) ++ " -out " ++ os_filename(PemFile)),
                     _ = file:change_mode(KeyFile, 8#00600),
                     _ = file:change_mode(PemFile, 8#00600),
                     _ = file:change_mode(CertFile, 8#00644),
@@ -226,3 +226,28 @@ decode_value({printableString, P}) -> iolist_to_binary(P);
 decode_value({utf8String, B}) -> B.
 
 
+
+%% @doc Simple escape function for filenames as commandline arguments.
+%% foo/"bar.jpg -> "foo/\"bar.jpg"; on windows "foo\\\"bar.jpg" (both including quotes!)
+-spec os_filename( string()|binary() ) -> string().
+os_filename(A) when is_binary(A) ->
+    os_filename(unicode:characters_to_list(A), []);
+os_filename(A) when is_list(A) ->
+    os_filename(lists:flatten(A), []).
+
+os_filename([], Acc) ->
+    [$"] ++ filename:nativename(lists:reverse(Acc)) ++ [$"];
+os_filename([C|Rest], Acc)
+    when C =:= $";
+         C =:= $$;
+         C =:= $[;
+         C =:= $];
+         C =:= $(;
+         C =:= $);
+         C =:= ${;
+         C =:= $};
+         C =:= $*;
+         C =:= $\\ ->
+    os_filename(Rest, [C, $\\ | Acc]);
+os_filename([C|Rest], Acc) ->
+    os_filename(Rest, [C|Acc]).

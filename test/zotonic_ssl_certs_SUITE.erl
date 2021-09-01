@@ -21,7 +21,8 @@ end_per_testcase(_TestCase, _Config) ->
 
 all() ->
     [
-        generate_self_signed
+        generate_self_signed,
+        generate_self_signed_spaced_dir
     ].
 
 %%--------------------------------------------------------------------
@@ -30,6 +31,13 @@ all() ->
 
 generate_self_signed(Config) ->
     Dir = tmpdir(Config),
+    do_generate_self_signed(Dir).
+
+generate_self_signed_spaced_dir(Config) ->
+    Dir = spaced_dir(Config),
+    do_generate_self_signed(Dir).
+
+do_generate_self_signed(Dir) ->
     CertFile = filename:join(Dir, "cert.crt"),
     PemFile = filename:join(Dir, "cert.pem"),
     Options = #{
@@ -46,6 +54,11 @@ generate_self_signed(Config) ->
     } = CertInfo,
     ok.
 
+
 tmpdir(Config) ->
     {data_dir, DataDir} = proplists:lookup(data_dir, Config),
     filename:join([DataDir, "tmp"]).
+
+spaced_dir(Config) ->
+    {data_dir, DataDir} = proplists:lookup(data_dir, Config),
+    filename:join([DataDir, "tmp", "A B"]).
