@@ -95,7 +95,8 @@ generate_self_signed(CertFile, PemFile, Options) ->
             % error_logger:info_msg("SSL: ~p", [Result]),
             case file:read_file(KeyFile) of
                 {ok, <<"-----BEGIN PRIVATE KEY", _/binary>>} ->
-                    _ = os:cmd("openssl rsa -in " ++ os_filename(KeyFile) ++ " -out " ++ os_filename(PemFile)),
+                    _ = os:cmd("openssl pkcs8 -in " ++ os_filename(KeyFile) ++
+                               " -traditional -nocrypt -out " ++ os_filename(PemFile)),
                     _ = file:change_mode(KeyFile, 8#00600),
                     _ = file:change_mode(PemFile, 8#00600),
                     _ = file:change_mode(CertFile, 8#00644),
