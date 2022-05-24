@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        otp_version: [22.3,23.3,24.0.5]
+        otp_version: [22.3,23.3,24,25]
         os: [ubuntu-latest]
 
     container:
@@ -26,4 +26,8 @@ jobs:
       - name: Compile
         run: make
       - name: Test
-        run: make test 
+        run: make test
+      - name: XRef
+        run: make xref
+      - name: Dialyzer
+        run: make test
