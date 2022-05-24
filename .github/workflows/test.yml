@@ -10,15 +10,15 @@ jobs:
   linux:
     name: Test on OTP ${{ matrix.otp_version }}
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       matrix:
         otp_version: [22.3,23.3,24.0.5]
-        os: [ubuntu-latest]
-      
+        os: [ubuntu-20.04, ubuntu-22.04]
+
     container:
       image: erlang:${{ matrix.otp_version }}
-    
+
     steps:
       - uses: actions/checkout@v2
       - name: OpenSSL version
