@@ -21,6 +21,8 @@ jobs:
     
     steps:
       - uses: actions/checkout@v2
+      - name: OpenSSL version
+        run: openssl version
       - name: Compile
         run: make
       - name: Test
