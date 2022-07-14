@@ -1,9 +1,9 @@
 %% @author Marc Worrell <marc@worrell.nl>
 %% @author Maas-Maarten Zeeman <mmzeeman@xs4all.nl>
-%% @copyright 2012-2021 Marc Worrell, Maas-Maarten Zeeman
+%% @copyright 2012-2022 Marc Worrell, Maas-Maarten Zeeman
 %% @doc SSL support functions, create self-signed certificates
 
-%% Copyright 2012-2021 Marc Worrell, Maas-Maarten Zeeman
+%% Copyright 2012-2022 Marc Worrell, Maas-Maarten Zeeman
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@
 ]).
 
 -include_lib("public_key/include/public_key.hrl").
+-include_lib("kernel/include/logger.hrl").
 
 -define(BITS, "4096").
 
@@ -60,8 +61,6 @@ ensure_self_signed(CertFile, PemFile, Options) ->
                  | {cannot_read_pemfile, file:filename_all(), file:posix()}.
 check_keyfile(Filename) ->
     case file:read_file(Filename) of
-        {ok, <<"-----BEGIN PRIVATE KEY", _/binary>>} ->
-            {error, {need_rsa_private_key, Filename, "use: openssl rsa -in sitename.key -out sitename.pem"}};
         {ok, Bin} ->
             case public_key:pem_decode(Bin) of
                 [] -> {error, {no_private_keys_found, Filename}};
@@ -90,27 +89,33 @@ generate_self_signed(CertFile, PemFile, Options) ->
                     ++ " -newkey rsa:"++?BITS++" "
                     ++ " -keyout " ++ os_filename(KeyFile)
                     ++ " -out " ++ os_filename(CertFile),
-            % error_logger:info_msg("SSL: ~s", [Command]),
             Result = os:cmd(Command),
-            % error_logger:info_msg("SSL: ~p", [Result]),
-            case file:read_file(KeyFile) of
-                {ok, <<"-----BEGIN PRIVATE KEY", _/binary>>} ->
-                    _ = os:cmd("openssl pkcs8 -in " ++ os_filename(KeyFile) ++
-                               " -traditional -nocrypt -out " ++ os_filename(PemFile)),
-                    _ = file:change_mode(KeyFile, 8#00600),
-                    _ = file:change_mode(PemFile, 8#00600),
-                    _ = file:change_mode(CertFile, 8#00644),
-                    error_logger:info_msg("SSL: Generated SSL self-signed certificate in '~s'", [KeyFile]),
-                    ok;
-                {ok, <<"-----BEGIN RSA PRIVATE KEY", _/binary>>} ->
+            ?LOG_DEBUG(#{
+                text => <<"Generating self-signed key.">>,
+                in => zotonic_ssl,
+                what => cert_generate,
+                openssl_command => unicode:characters_to_binary(Command, utf8),
+                openssl_result => unicode:characters_to_binary(Result, utf8)
+            }),
+            case check_keyfile(KeyFile) of
+                ok ->
                     file:rename(KeyFile, PemFile),
                     _ = file:change_mode(PemFile, 8#00600),
                     _ = file:change_mode(CertFile, 8#00644),
                     error_logger:info_msg("SSL: Generated SSL self-signed certificate in '~s'", [KeyFile]),
                     ok;
-                _Error ->
-                    error_logger:error_msg("SSL: Failed generating self-signed ssl keys in '~s' (output was ~s)",
-                                           [PemFile, Result]),
+                {error, _} ->
+                    ?LOG_ERROR(#{
+                        text => <<"Error generating self-signed key.">>,
+                        result => error,
+                        in => zotonic_ssl,
+                        what => cert_generate,
+                        openssl_command => unicode:characters_to_binary(Command, utf8),
+                        openssl_result => unicode:characters_to_binary(Result, utf8),
+                        pemfile => unicode:characters_to_binary(PemFile, utf8),
+                        keyfile => unicode:characters_to_binary(KeyFile, utf8),
+                        output => Result
+                    }),
                     {error, openssl}
             end;
         {error, _} = Error ->
