@@ -30,6 +30,8 @@
     ciphers/0
 ]).
 
+
+
 -include_lib("public_key/include/public_key.hrl").
 -include_lib("kernel/include/logger.hrl").
 
@@ -40,6 +42,12 @@
         servername => string() | binary()
     }.
 -export_type([options/0]).
+
+-if(?OTP_RELEASE >= 28).
+-define(PUB_KEY_MODULE, 'OTP-PKIX').
+-else.
+-define(PUB_KEY_MODULE, 'OTP-PUB-KEY').
+-endif.
 
 
 %% @doc Check if all certificates are available in the site's ssl directory
@@ -220,7 +228,7 @@ decode_sans(asn1_NOVALUE) ->
 decode_sans([]) ->
     [];
 decode_sans([#'Extension'{extnID=?'id-ce-subjectAltName', extnValue=V} | _]) ->
-    case 'OTP-PUB-KEY':decode('SubjectAltName', iolist_to_binary(V)) of
+    case ?PUB_KEY_MODULE:decode('SubjectAltName', iolist_to_binary(V)) of
         {ok, Vs} -> lists:map(fun decode_value/1, Vs);
         _ -> []
     end;
