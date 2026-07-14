@@ -205,8 +205,7 @@ decode_time({_,[Y1,Y2,Y3,Y4,M1,M2,D1,D2,H1,H2,M3,M4,S1,S2,$Z]}) ->
     Sec   = list_to_integer([S1, S2]),
     {{Year, Month, Day}, {Hour, Min, Sec}}.
 
-decode_subject({rdnSequence, _} = R) ->
-    {rdnSequence, List} = pubkey_cert_records:transform(R, decode),
+decode_subject({rdnSequence, List}) ->
     lists:foldl(
             fun
                 (#'AttributeTypeAndValue'{type=?'id-at-commonName', value=CN}, Acc) ->
