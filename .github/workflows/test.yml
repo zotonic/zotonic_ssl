@@ -20,7 +20,7 @@ jobs:
       image: erlang:${{ matrix.otp_version }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
       - name: OpenSSL version
         run: openssl version
       - name: Compile
