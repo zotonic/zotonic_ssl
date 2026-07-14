@@ -127,7 +127,7 @@ execute_generate_self_signed(Command, CertFile, KeyFile, PemFile) ->
             file:rename(KeyFile, PemFile),
             _ = file:change_mode(PemFile, 8#00600),
             _ = file:change_mode(CertFile, 8#00644),
-            error_logger:info_msg("SSL: Generated SSL self-signed certificate in '~s'", [PemFile]),
+            error_logger:info_msg("SSL: Generated SSL self-signed key in '~s' and certificate in '~s'", [PemFile, CertFile]),
             ok;
         {error, _} ->
             ?LOG_ERROR(#{
