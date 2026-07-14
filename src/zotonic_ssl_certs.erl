@@ -127,7 +127,14 @@ execute_generate_self_signed(Command, CertFile, KeyFile, PemFile) ->
             file:rename(KeyFile, PemFile),
             _ = file:change_mode(PemFile, 8#00600),
             _ = file:change_mode(CertFile, 8#00644),
-            error_logger:info_msg("SSL: Generated SSL self-signed key in '~s' and certificate in '~s'", [PemFile, CertFile]),
+            ?LOG_INFO(#{
+                text => <<"Generated self-signed key and certificate.">>,
+                in => zotonic_ssl,
+                what => cert_generate,
+                result => ok,
+                pemfile => unicode:characters_to_binary(PemFile, utf8),
+                certfile => unicode:characters_to_binary(CertFile, utf8)
+            }),
             ok;
         {error, _} ->
             ?LOG_ERROR(#{
