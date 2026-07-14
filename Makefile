@@ -2,7 +2,7 @@ REBAR := ./rebar3
 REBAR_URL := https://s3.amazonaws.com/rebar3/rebar3
 ERL       ?= erl
 
-.PHONY: all compile shell test clean xref dialyzer
+.PHONY: all compile shell test clean xref dialyzer docs
 
 all: compile
 
@@ -23,6 +23,9 @@ xref: $(REBAR)
 
 dialyzer: $(REBAR)
 	$(REBAR) as test dialyzer
+
+docs: $(REBAR)
+	$(REBAR) ex_doc
 
 ./rebar3:
 	$(ERL) -noshell -s inets -s ssl \

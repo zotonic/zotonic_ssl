@@ -18,7 +18,7 @@
 
 -module(zotonic_ssl_util).
 
--export([ os_filename/1 ]).
+-export([ os_filename/1, ensure_dir/1 ]).
 
 %% @doc Simple escape function for filenames as commandline arguments.
 %% The result includes quotes.
@@ -59,3 +59,58 @@ os_filename_win32_bs([$"|Rest], N, Acc) ->
     os_filename_win32(Rest, [$" | lists:duplicate(N * 2 + 1, $\\) ++ Acc]);
 os_filename_win32_bs([C|Rest], N, Acc) ->
     os_filename_win32(Rest, [C | lists:duplicate(N, $\\) ++ Acc]).
+
+
+
+%% @doc Ensure the directory of a file is present. This will still work
+%%      if a soft-link in the path refers to a missing directory.
+-spec ensure_dir(file:filename_all()) -> ok | {error, term()}.
+ensure_dir(Filename) ->
+    case filelib:ensure_dir(Filename) of
+        ok -> ok;
+        {error, enoent} ->
+            % Could be that there is a softlink to a missing directory in the path
+            {LinkFile, Rest} = first_missing(filename:split(Filename), []),
+            case file:read_link(LinkFile) of
+                {ok, Link} ->
+                    case make_link_target(Link, LinkFile, Rest) of
+                        ok -> ensure_dir(Filename);
+                        {error, _} = Error -> Error
+                    end;
+                {error, _} = Error ->
+                    Error
+            end;
+        {error, _} = Error ->
+            Error
+    end.
+
+
+make_link_target(Link, LinkFile, Rest) ->
+    Target = case is_relative(Link) of
+        true -> filename:join([ filename:dirname(LinkFile), Link ]);
+        false -> Link
+    end,
+    case Rest of
+        [] -> filelib:ensure_dir(filename:join([ Target ]));
+        _ -> filelib:ensure_dir(filename:join([ Target, hd(Rest) ]))
+    end.
+
+is_relative(Path) ->
+    case filename:split(Path) of
+        [".."|_] -> true;
+        ["."|_] -> true;
+        [<<"..">>|_] -> true;
+        [<<".">>|_] -> true;
+        _ -> false
+    end.
+
+
+first_missing([], Acc) ->
+    lists:reverse(Acc);
+first_missing([P|Ps], Acc) ->
+    Acc1 = [P|Acc],
+    Path = filename:join(lists:reverse(Acc1)),
+    case filelib:is_file(Path) of
+        true -> first_missing(Ps, [P|Acc]);
+        false -> {Path, Ps}
+    end.

@@ -77,7 +77,7 @@ check_keyfile(Filename) ->
 -spec generate_self_signed( file:filename_all(), file:filename_all(), options() ) -> ok | {error, term()}.
 generate_self_signed(CertFile, PemFile, Options) ->
     % lager:info("Generating self-signed ssl keys in '~s'", [PemFile]),
-    case z_filelib:ensure_dir(PemFile) of
+    case zotonic_ssl_util:ensure_dir(PemFile) of
         ok ->
             % _ = file:change_mode(filename:dirname(PemFile), 8#00700),
             KeyFile = filename:rootname(PemFile) ++ ".key",

@@ -7,6 +7,26 @@ on:
     branches: [ master ]
 
 jobs:
+  otp-22:
+    name: Test on OTP 22
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Compile and test
+        run: |
+          docker run --rm \
+            --volume "$PWD:/work" \
+            --workdir /work \
+            erlang:22 \
+            sh -c '
+              wget --quiet https://github.com/erlang/rebar3/releases/download/3.16.1/rebar3 --output-document=/tmp/rebar3 &&
+              chmod +x /tmp/rebar3 &&
+              /tmp/rebar3 compile &&
+              /tmp/rebar3 as test ct &&
+              /tmp/rebar3 as test xref
+            '
+
   linux:
     name: Test on OTP ${{ matrix.otp_version }}
     runs-on: ${{ matrix.os }}
@@ -31,3 +51,5 @@ jobs:
         run: make xref
       - name: Dialyzer
         run: make test
+      - name: Docs
+        run: make docs
