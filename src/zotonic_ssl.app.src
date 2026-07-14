@@ -2,7 +2,7 @@
     {description, "Zotonic SSL routines"},
     {vsn, "git"},
     {registered, []},
-    {applications, [kernel, stdlib, ssl]},
+    {applications, [kernel, stdlib, public_key, ssl]},
     {env, []},
     {modules, []},
     {maintainers, ["Zotonic Team"]},
