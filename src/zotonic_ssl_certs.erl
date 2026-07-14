@@ -1,9 +1,9 @@
 %% @author Marc Worrell <marc@worrell.nl>
 %% @author Maas-Maarten Zeeman <mmzeeman@xs4all.nl>
-%% @copyright 2012-2022 Marc Worrell, Maas-Maarten Zeeman
+%% @copyright 2012-2026 Marc Worrell, Maas-Maarten Zeeman
 %% @doc SSL support functions, create self-signed certificates
 
-%% Copyright 2012-2022 Marc Worrell, Maas-Maarten Zeeman
+%% Copyright 2012-2026 Marc Worrell, Maas-Maarten Zeeman
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -43,13 +43,6 @@
     }.
 -export_type([options/0]).
 
--if(?OTP_RELEASE >= 28).
--define(PUB_KEY_MODULE, 'OTP-PKIX').
--else.
--define(PUB_KEY_MODULE, 'OTP-PUB-KEY').
--endif.
-
-
 %% @doc Check if all certificates are available in the site's ssl directory
 -spec ensure_self_signed( file:filename_all(), file:filename_all(), options() ) ->  ok | {error, term()}.
 ensure_self_signed(CertFile, PemFile, Options) ->
@@ -84,7 +77,7 @@ check_keyfile(Filename) ->
 -spec generate_self_signed( file:filename_all(), file:filename_all(), options() ) -> ok | {error, term()}.
 generate_self_signed(CertFile, PemFile, Options) ->
     % lager:info("Generating self-signed ssl keys in '~s'", [PemFile]),
-    case z_filelib:ensure_dir(PemFile) of
+    case zotonic_ssl_util:ensure_dir(PemFile) of
         ok ->
             % _ = file:change_mode(filename:dirname(PemFile), 8#00700),
             KeyFile = filename:rootname(PemFile) ++ ".key",
@@ -95,8 +88,8 @@ generate_self_signed(CertFile, PemFile, Options) ->
                              ++"/O=" ++ servername(Options)
                              ++"\""
                     ++ " -newkey rsa:"++?BITS++" "
-                    ++ " -keyout " ++ os_filename(KeyFile)
-                    ++ " -out " ++ os_filename(CertFile),
+                    ++ " -keyout " ++ zotonic_ssl_util:os_filename(KeyFile)
+                    ++ " -out " ++ zotonic_ssl_util:os_filename(CertFile),
             Result = os:cmd(Command),
             ?LOG_DEBUG(#{
                 text => <<"Generating self-signed key.">>,
@@ -179,11 +172,12 @@ decode_cert(CertFile) ->
 
 decode_cert_data({ok, CertData}) ->
     PemEntries = public_key:pem_decode(CertData),
-    case public_key:pem_entry_decode(hd(PemEntries)) of
-        {'Certificate', #'TBSCertificate'{} = TBS, _, _} ->
-            #'Validity'{notAfter = NotAfter} = TBS#'TBSCertificate'.validity,
-            Subject = decode_subject(TBS#'TBSCertificate'.subject),
-            SANs = decode_sans(TBS#'TBSCertificate'.extensions),
+    case hd(PemEntries) of
+        {'Certificate', Der, _} ->
+            #'OTPCertificate'{tbsCertificate = TBS} = public_key:pkix_decode_cert(Der, otp),
+            #'Validity'{notAfter = NotAfter} = TBS#'OTPTBSCertificate'.validity,
+            Subject = decode_subject(TBS#'OTPTBSCertificate'.subject),
+            SANs = decode_sans(TBS#'OTPTBSCertificate'.extensions),
             {ok, #{
                 not_after => decode_time(NotAfter),
                 common_name => maps:get(cn, Subject, undefined),
@@ -211,8 +205,7 @@ decode_time({_,[Y1,Y2,Y3,Y4,M1,M2,D1,D2,H1,H2,M3,M4,S1,S2,$Z]}) ->
     Sec   = list_to_integer([S1, S2]),
     {{Year, Month, Day}, {Hour, Min, Sec}}.
 
-decode_subject({rdnSequence, _} = R) ->
-    {rdnSequence, List} = pubkey_cert_records:transform(R, decode),
+decode_subject({rdnSequence, List}) ->
     lists:foldl(
             fun
                 (#'AttributeTypeAndValue'{type=?'id-at-commonName', value=CN}, Acc) ->
@@ -227,41 +220,16 @@ decode_sans(asn1_NOVALUE) ->
     [];
 decode_sans([]) ->
     [];
-decode_sans([#'Extension'{extnID=?'id-ce-subjectAltName', extnValue=V} | _]) ->
-    case ?PUB_KEY_MODULE:decode('SubjectAltName', iolist_to_binary(V)) of
-        {ok, Vs} -> lists:map(fun decode_value/1, Vs);
-        _ -> []
-    end;
+decode_sans([#'Extension'{extnID=?'id-ce-subjectAltName', extnValue=SANs} | _]) ->
+    lists:filtermap(
+        fun
+            ({dNSName, _} = SAN) -> {true, decode_value(SAN)};
+            (_) -> false
+        end,
+        SANs);
 decode_sans([_|Exts]) ->
     decode_sans(Exts).
 
 decode_value({dNSName, Name}) -> iolist_to_binary(Name);
 decode_value({printableString, P}) -> iolist_to_binary(P);
 decode_value({utf8String, B}) -> B.
-
-
-
-%% @doc Simple escape function for filenames as commandline arguments.
-%% foo/"bar.jpg -> "foo/\"bar.jpg"; on windows "foo\\\"bar.jpg" (both including quotes!)
--spec os_filename( string()|binary() ) -> string().
-os_filename(A) when is_binary(A) ->
-    os_filename(unicode:characters_to_list(A), []);
-os_filename(A) when is_list(A) ->
-    os_filename(lists:flatten(A), []).
-
-os_filename([], Acc) ->
-    [$"] ++ filename:nativename(lists:reverse(Acc)) ++ [$"];
-os_filename([C|Rest], Acc)
-    when C =:= $";
-         C =:= $$;
-         C =:= $[;
-         C =:= $];
-         C =:= $(;
-         C =:= $);
-         C =:= ${;
-         C =:= $};
-         C =:= $*;
-         C =:= $\\ ->
-    os_filename(Rest, [C, $\\ | Acc]);
-os_filename([C|Rest], Acc) ->
-    os_filename(Rest, [C|Acc]).

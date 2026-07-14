@@ -36,7 +36,7 @@
 -define(DEFAULT_DHGROUP, ffdhe3072).
 
 %% @doc Check if the file is a DH file.
--spec is_dhfile( file:filenam_all() ) -> boolean().
+-spec is_dhfile( file:filename_all() ) -> boolean().
 is_dhfile(Filename) ->
     case file:read_file(Filename) of
         {ok, <<"-----BEGIN DH PARAMETERS", _/binary>>} -> true;
@@ -57,7 +57,7 @@ ensure_dhfile(Filename, Group) ->
         true ->
             ok;
         false ->
-            case z_filelib:ensure_dir(Filename) of
+            case zotonic_ssl_util:ensure_dir(Filename) of
                 ok ->
                     write_dhfile(Filename, Group);
                 {error, _} = Error ->

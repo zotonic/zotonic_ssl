@@ -21,6 +21,7 @@ end_per_testcase(_TestCase, _Config) ->
 
 all() ->
     [
+        decode_cert_with_sans,
         generate_self_signed,
         generate_self_signed_spaced_dir
     ].
@@ -28,6 +29,25 @@ all() ->
 %%--------------------------------------------------------------------
 %% TEST CASES
 %%--------------------------------------------------------------------
+
+decode_cert_with_sans(Config) ->
+    CertFile = filename:join(?config(data_dir, Config), "sn.crt"),
+    {ok, CertInfo} = zotonic_ssl_certs:decode_cert(CertFile),
+    #{
+        common_name := <<"sculpture-network.org">>,
+        not_after := {{2026, 10, 12}, {8, 15, 25}},
+        subject_alt_names := [
+            <<"blakeward.com">>,
+            <<"lists.sculpture-network.net">>,
+            <<"lists.sculpture-network.org">>,
+            <<"sculpture-network.net">>,
+            <<"sculpture-network.org">>,
+            <<"www.blakeward.com">>,
+            <<"www.sculpture-network.net">>,
+            <<"www.sculpture-network.org">>
+        ]
+    } = CertInfo,
+    ok.
 
 generate_self_signed(Config) ->
     Dir = tmpdir(Config),
