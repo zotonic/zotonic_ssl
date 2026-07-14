@@ -50,6 +50,6 @@ jobs:
       - name: XRef
         run: make xref
       - name: Dialyzer
-        run: make test
+        run: make dialyzer
       - name: Docs
         run: make docs
