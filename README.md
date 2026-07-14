@@ -19,6 +19,21 @@ ok = zotonic_ssl_certs:ensure_self_signed(CertFile, PemFile, Options).
 ```
 
 The hostname and the servername default to the hostname returned by `inet:gethostname/0`.
+By default a 4096 bit RSA key is generated.
+
+To generate an ECDSA key using the default P-256 curve:
+
+```erlang
+Options = #{
+        hostname => "localhost.example.com",
+        servername => "MyServerName",
+        key_type => ecdsa
+    },
+ok = zotonic_ssl_certs:generate_self_signed(CertFile, PemFile, Options).
+```
+
+Set `elliptic_curve => secp384r1` to use P-384 instead. The supported elliptic
+curves are `secp256r1` (the default) and `secp384r1`.
 
 
 ### Ensure self-signed certificates
@@ -28,6 +43,9 @@ Similar to generating, except that this routine does nothing if the files alread
 ```
 ok = zotonic_ssl_certs:ensure_self_signed(CertFile, PemFile, Options).
 ```
+
+Existing certificate and key files are not replaced, even when the requested
+`key_type` differs from the existing key.
 
 ### Decode a certificate
 

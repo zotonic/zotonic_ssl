@@ -35,13 +35,19 @@
 -include_lib("public_key/include/public_key.hrl").
 -include_lib("kernel/include/logger.hrl").
 
--define(BITS, "4096").
+-define(RSA_BITS, "4096").
+-define(DEFAULT_ELLIPTIC_CURVE, secp256r1).
+
+-type key_type() :: rsa | ecdsa.
+-type elliptic_curve() :: secp256r1 | secp384r1.
 
 -type options() :: #{
         hostname => string() | binary(),
-        servername => string() | binary()
+        servername => string() | binary(),
+        key_type => key_type(),
+        elliptic_curve => elliptic_curve()
     }.
--export_type([options/0]).
+-export_type([options/0, key_type/0, elliptic_curve/0]).
 
 %% @doc Check if all certificates are available in the site's ssl directory
 -spec ensure_self_signed( file:filename_all(), file:filename_all(), options() ) ->  ok | {error, term()}.
@@ -72,14 +78,24 @@ check_keyfile(Filename) ->
     end.
 
 %% @doc Generate a self signed certificate with the hostname and servername in the options. The hostname
-%% and servername both default to inet:gethostname/0. The key is generated in the PemFile and the
-%% certificate in the CertFile. If the directory of the PemFile does not exist then it is created.
+%% and servername both default to inet:gethostname/0. The key type defaults to a 4096 bit RSA key. Set
+%% `key_type' to `ecdsa' to generate an EC key; `elliptic_curve' defaults to `secp256r1'. The key is
+%% generated in the PemFile and the certificate in the CertFile. If the directory of the PemFile does
+%% not exist then it is created.
 -spec generate_self_signed( file:filename_all(), file:filename_all(), options() ) -> ok | {error, term()}.
 generate_self_signed(CertFile, PemFile, Options) ->
-    % lager:info("Generating self-signed ssl keys in '~s'", [PemFile]),
+    case private_key_options(Options) of
+        {ok, PrivateKeyOptions} ->
+            generate_self_signed(CertFile, PemFile, Options, PrivateKeyOptions);
+        {error, _} = Error ->
+            Error
+    end.
+
+-spec generate_self_signed(file:filename_all(), file:filename_all(), options(), string()) ->
+    ok | {error, term()}.
+generate_self_signed(CertFile, PemFile, Options, PrivateKeyOptions) ->
     case zotonic_ssl_util:ensure_dir(PemFile) of
         ok ->
-            % _ = file:change_mode(filename:dirname(PemFile), 8#00700),
             KeyFile = filename:rootname(PemFile) ++ ".key",
             Command = "openssl req -x509 -nodes"
                     ++ " -days 3650"
@@ -87,41 +103,70 @@ generate_self_signed(CertFile, PemFile, Options) ->
                     ++ " -subj \"/CN=" ++ hostname(Options)
                              ++"/O=" ++ servername(Options)
                              ++"\""
-                    ++ " -newkey rsa:"++?BITS++" "
+                    ++ PrivateKeyOptions
                     ++ " -keyout " ++ zotonic_ssl_util:os_filename(KeyFile)
                     ++ " -out " ++ zotonic_ssl_util:os_filename(CertFile),
-            Result = os:cmd(Command),
-            ?LOG_DEBUG(#{
-                text => <<"Generating self-signed key.">>,
-                in => zotonic_ssl,
-                what => cert_generate,
-                openssl_command => unicode:characters_to_binary(Command, utf8),
-                openssl_result => unicode:characters_to_binary(Result, utf8)
-            }),
-            case check_keyfile(KeyFile) of
-                ok ->
-                    file:rename(KeyFile, PemFile),
-                    _ = file:change_mode(PemFile, 8#00600),
-                    _ = file:change_mode(CertFile, 8#00644),
-                    error_logger:info_msg("SSL: Generated SSL self-signed certificate in '~s'", [KeyFile]),
-                    ok;
-                {error, _} ->
-                    ?LOG_ERROR(#{
-                        text => <<"Error generating self-signed key.">>,
-                        result => error,
-                        in => zotonic_ssl,
-                        what => cert_generate,
-                        openssl_command => unicode:characters_to_binary(Command, utf8),
-                        openssl_result => unicode:characters_to_binary(Result, utf8),
-                        pemfile => unicode:characters_to_binary(PemFile, utf8),
-                        keyfile => unicode:characters_to_binary(KeyFile, utf8),
-                        output => Result
-                    }),
-                    {error, openssl}
-            end;
+            execute_generate_self_signed(Command, CertFile, KeyFile, PemFile);
         {error, _} = Error ->
             {error, {ensure_dir, Error, PemFile}}
     end.
+
+-spec execute_generate_self_signed(string(), file:filename_all(), file:filename_all(), file:filename_all()) ->
+    ok | {error, openssl}.
+execute_generate_self_signed(Command, CertFile, KeyFile, PemFile) ->
+    Result = os:cmd(Command),
+    ?LOG_DEBUG(#{
+        text => <<"Generating self-signed key.">>,
+        in => zotonic_ssl,
+        what => cert_generate,
+        openssl_command => unicode:characters_to_binary(Command, utf8),
+        openssl_result => unicode:characters_to_binary(Result, utf8)
+    }),
+    case check_keyfile(KeyFile) of
+        ok ->
+            file:rename(KeyFile, PemFile),
+            _ = file:change_mode(PemFile, 8#00600),
+            _ = file:change_mode(CertFile, 8#00644),
+            error_logger:info_msg("SSL: Generated SSL self-signed certificate in '~s'", [PemFile]),
+            ok;
+        {error, _} ->
+            ?LOG_ERROR(#{
+                text => <<"Error generating self-signed key.">>,
+                result => error,
+                reason => openssl,
+                in => zotonic_ssl,
+                what => cert_generate,
+                openssl_command => unicode:characters_to_binary(Command, utf8),
+                openssl_result => unicode:characters_to_binary(Result, utf8),
+                pemfile => unicode:characters_to_binary(PemFile, utf8),
+                keyfile => unicode:characters_to_binary(KeyFile, utf8)
+            }),
+            {error, openssl}
+    end.
+
+-spec private_key_options(map()) -> {ok, string()} | {error, term()}.
+private_key_options(#{ key_type := ecdsa } = Options) ->
+    Curve = maps:get(elliptic_curve, Options, ?DEFAULT_ELLIPTIC_CURVE),
+    case openssl_curve_name(Curve) of
+        {ok, CurveName} ->
+            {ok, " -newkey ec -pkeyopt ec_paramgen_curve:" ++ CurveName};
+        {error, _} = Error ->
+            Error
+    end;
+private_key_options(#{ key_type := rsa }) ->
+    {ok, " -newkey rsa:" ++ ?RSA_BITS};
+private_key_options(#{ key_type := KeyType }) ->
+    {error, {unsupported_key_type, KeyType}};
+private_key_options(_Options) ->
+    {ok, " -newkey rsa:" ++ ?RSA_BITS}.
+
+-spec openssl_curve_name(term()) -> {ok, string()} | {error, term()}.
+openssl_curve_name(secp256r1) ->
+    {ok, "prime256v1"};
+openssl_curve_name(secp384r1) ->
+    {ok, "secp384r1"};
+openssl_curve_name(Curve) ->
+    {error, {unsupported_elliptic_curve, Curve}}.
 
 hostname(#{ hostname := Hostname }) ->
     normalize_hostname(Hostname);
