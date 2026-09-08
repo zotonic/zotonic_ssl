@@ -80,8 +80,8 @@ check_keyfile(Filename) ->
 %% @doc Generate a self signed certificate with the hostname and servername in the options. The hostname
 %% and servername both default to inet:gethostname/0. The key type defaults to a 4096 bit RSA key. Set
 %% `key_type' to `ecdsa' to generate an EC key; `elliptic_curve' defaults to `secp256r1'. The key is
-%% generated in the PemFile and the certificate in the CertFile. If the directory of the PemFile does
-%% not exist then it is created.
+%% generated in the PemFile and the certificate in the CertFile. The hostname is included as a DNS
+%% subject alternative name. If the directory of the PemFile does not exist then it is created.
 -spec generate_self_signed( file:filename_all(), file:filename_all(), options() ) -> ok | {error, term()}.
 generate_self_signed(CertFile, PemFile, Options) ->
     case private_key_options(Options) of
@@ -96,13 +96,15 @@ generate_self_signed(CertFile, PemFile, Options) ->
 generate_self_signed(CertFile, PemFile, Options, PrivateKeyOptions) ->
     case zotonic_ssl_util:ensure_dir(PemFile) of
         ok ->
+            Hostname = hostname(Options),
             KeyFile = filename:rootname(PemFile) ++ ".key",
             Command = "openssl req -x509 -nodes"
                     ++ " -days 3650"
                     ++ " -sha256"
-                    ++ " -subj \"/CN=" ++ hostname(Options)
+                    ++ " -subj \"/CN=" ++ Hostname
                              ++"/O=" ++ servername(Options)
                              ++"\""
+                    ++ " -addext \"subjectAltName=DNS:" ++ Hostname ++ "\""
                     ++ PrivateKeyOptions
                     ++ " -keyout " ++ zotonic_ssl_util:os_filename(KeyFile)
                     ++ " -out " ++ zotonic_ssl_util:os_filename(CertFile),

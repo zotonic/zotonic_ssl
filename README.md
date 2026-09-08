@@ -19,6 +19,7 @@ ok = zotonic_ssl_certs:ensure_self_signed(CertFile, PemFile, Options).
 ```
 
 The hostname and the servername default to the hostname returned by `inet:gethostname/0`.
+The hostname is included in the certificate as a DNS subject alternative name.
 By default a 4096 bit RSA key is generated.
 
 To generate an ECDSA key using the default P-256 curve:

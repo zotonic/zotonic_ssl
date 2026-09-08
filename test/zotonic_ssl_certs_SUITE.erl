@@ -74,7 +74,7 @@ do_generate_self_signed(Dir) ->
     #{
         common_name := <<"self-signed.test">>,
         not_after := {{_,_,_},{_,_,_}},
-        subject_alt_names := []
+        subject_alt_names := [<<"self-signed.test">>]
     } = CertInfo,
     rsa = certificate_key_type(CertFile),
     ok.
@@ -90,6 +90,7 @@ generate_self_signed_ecdsa(Config) ->
     },
     ok = zotonic_ssl_certs:generate_self_signed(CertFile, PemFile, Options),
     {ecdsa, ?'secp256r1'} = private_key_type(PemFile),
+    [<<"ecdsa.test">>] = certificate_subject_alt_names(CertFile),
     ecdsa = certificate_key_type(CertFile),
     ok.
 
@@ -105,6 +106,7 @@ generate_self_signed_ecdsa_secp384r1(Config) ->
     },
     ok = zotonic_ssl_certs:generate_self_signed(CertFile, PemFile, Options),
     {ecdsa, ?'secp384r1'} = private_key_type(PemFile),
+    [<<"ecdsa-384.test">>] = certificate_subject_alt_names(CertFile),
     ecdsa = certificate_key_type(CertFile),
     ok.
 
@@ -132,6 +134,10 @@ certificate_key_type(CertFile) ->
         ?'rsaEncryption' -> rsa;
         ?'id-ecPublicKey' -> ecdsa
     end.
+
+certificate_subject_alt_names(CertFile) ->
+    {ok, #{ subject_alt_names := SubjectAltNames }} = zotonic_ssl_certs:decode_cert(CertFile),
+    SubjectAltNames.
 
 
 tmpdir(Config) ->
