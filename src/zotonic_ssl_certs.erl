@@ -96,14 +96,15 @@ generate_self_signed(CertFile, PemFile, Options) ->
 generate_self_signed(CertFile, PemFile, Options, PrivateKeyOptions) ->
     case zotonic_ssl_util:ensure_dir(PemFile) of
         ok ->
+            Hostname = hostname(Options),
             KeyFile = filename:rootname(PemFile) ++ ".key",
             Command = "openssl req -x509 -nodes"
                     ++ " -days 3650"
                     ++ " -sha256"
-                    ++ " -subj \"/CN=" ++ hostname(Options)
+                    ++ " -subj \"/CN=" ++ Hostname
                              ++"/O=" ++ servername(Options)
                              ++"\""
-                    ++ " -addext \"subjectAltName=DNS:" ++ hostname(Options) ++ "\""
+                    ++ " -addext \"subjectAltName=DNS:" ++ Hostname ++ "\""
                     ++ PrivateKeyOptions
                     ++ " -keyout " ++ zotonic_ssl_util:os_filename(KeyFile)
                     ++ " -out " ++ zotonic_ssl_util:os_filename(CertFile),
